@@ -1,9 +1,8 @@
 import axios from "axios";
 import {HTTP_STATUS} from "../constants/http_status";
-import {renewToken} from "./auth.api";
 import createAuthRefreshInterceptor from "axios-auth-refresh";
 import {useDispatch, useSelector} from "react-redux";
-import {login, selectRefreshToken} from "../stores/reducers/token.reducer";
+import {login, renewToken, selectRefreshToken} from "../stores/reducers/token.reducer";
 
 const API = Object.freeze({
     pathLogin: '/api/v1/login',
@@ -36,32 +35,42 @@ const urlPatternValidation = URL => {
     return re.test(URL);
 };
 
-clientAuthentication.interceptors.response.use(function (response) {
-    // Any status code that lie within the range of 2xx cause this function to trigger
-    // Do something with response data
-    return response;
-}, async function (error) {
-    // Any status codes that falls outside the range of 2xx cause this function to trigger
-    // Do something with response error
-    if(error.response.status === HTTP_STATUS.unAuthorized ) { // trường hợp call api hết hạn accesstoken
-
-
-
-        // // access token expired
-        // // TODO call refresh token to renew access token
-        // try {
-        //     const response = await renewToken(localStorage.getItem('123'));
-        //     localStorage.setItem("refresh_token", response.data.message['refresh_token']);
-        //     error.config.headers['Authorization'] = 'Bearer ' + response.data.message['access_token'];
-        //     return clientAuthentication.request(error.config);
-        // } catch (childError) {
-        //     console.log(childError);
-        // }
-    }
-    return Promise.reject(error);
-});
+const tryAgainAPI = (config, accessToken) => {
+    console.log('tryAgainAPI');
+    console.log(config, accessToken);
+    const cloneConfig = {...config};
+    cloneConfig.headers['Authorization'] = `Bearer ${accessToken}`;
+    return axios(cloneConfig);
+}
+const setup = (store) => {
+    const { dispatch } = store;
+    clientAuthentication.interceptors.response.use(function (response) {
+        // Any status code that lie within the range of 2xx cause this function to trigger
+        // Do something with response data
+        return response;
+    }, async function (error) {
+        // Any status codes that falls outside the range of 2xx cause this function to trigger
+        // Do something with response error
+        if(error.response.status === HTTP_STATUS.unAuthorized ) { // trường hợp call api hết hạn accesstoken
+            // // access token expired
+            // // TODO call refresh token to renew access token
+            console.log('access token expired');
+            await dispatch(renewToken({config: error.config, callback: tryAgainAPI})).unwrap();
+            // try {
+            //     const response = await renewToken(localStorage.getItem('123'));
+            //     localStorage.setItem("refresh_token", response.data.message['refresh_token']);
+            //     error.config.headers['Authorization'] = 'Bearer ' + response.data.message['access_token'];
+            //     return clientAuthentication.request(error.config);
+            // } catch (childError) {
+            //     console.log(childError);
+            // }
+        }
+        return Promise.reject(error);
+    });
+}
 export {
     client,
     API,
     clientAuthentication,
+    setup,
 }

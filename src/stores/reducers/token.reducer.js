@@ -1,13 +1,15 @@
 import {createAsyncThunk, createSlice} from '@reduxjs/toolkit'
-import {login as apiLogin} from "../../apis";
+import {login as apiLogin, renewToken as apiRenewToken} from "../../apis";
 import {HTTP_STATUS} from "../../constants/http_status";
 import {Loading} from "../../constants/loading";
+import axios from "axios";
 
 // immutable
 const initialState = {
     userName: 'au dep trai',
     accessToken: null,
     refreshToken: null,
+    config: null,
     loading: Loading.idle,
     error: null,
 }
@@ -42,6 +44,33 @@ const tokenSlice = createSlice({
                     state.error = error;
                 }
             })
+
+
+        builder.addCase(renewToken.pending, (state, action) => {
+            if (state.loading === Loading.idle) {
+                state.loading = Loading.pending;
+            }
+        })
+            .addCase(renewToken.fulfilled, (state, action) => {
+                if (
+                    state.loading === Loading.pending
+                ) {
+                    state.loading = Loading.idle;
+                    const {access_token, refresh_token, config} = action.payload;
+                    state.accessToken = access_token;
+                    state.refreshToken = refresh_token;
+                    // axios(config);
+                }
+            })
+            .addCase(renewToken.rejected, (state, action) => {
+                if (
+                    state.loading === Loading.pending
+                ) {
+                    state.loading = Loading.idle;
+                    const {error} = action.payload;
+                    state.error = error;
+                }
+            })
     },
 })
 
@@ -63,6 +92,27 @@ export const login = createAsyncThunk(
             return rejectWithValue(err.response.data);
         }
 
+    }
+)
+
+export const renewToken = createAsyncThunk(
+    'token/renewToken',
+    async (data, {rejectWithValue, getState}) => {
+        try {
+            const {config, callback} = data;
+            const state = getState();
+            const refreshToken = selectRefreshToken(state);
+            console.log(`show refresh token old: ${refreshToken}`);
+            const response = await apiRenewToken(refreshToken);
+            if (response.status === HTTP_STATUS.ok) {
+                const message = response.data.message;
+                const {access_token} = message;
+                callback(config, access_token);
+                return message;
+            }
+        } catch(err) {
+            return rejectWithValue(err.response.data);
+        }
     }
 )
 // selector

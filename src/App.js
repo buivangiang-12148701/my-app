@@ -29,7 +29,7 @@ function App() {
         return await dispatch(getAllCustomer()).unwrap();
     }
     useEffect(() => {
-        // _bindAPILogin();
+        _bindAPILogin();
         setTimeout(() => {
             _bindGetAllCustomer();
         }, 2000);

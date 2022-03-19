@@ -6,6 +6,7 @@ import reportWebVitals from './reportWebVitals';
 import {persistor, store} from "./stores/stores";
 import {Provider} from "react-redux";
 import {PersistGate} from "redux-persist/integration/react";
+import {setup} from "./apis/base.api";
 
 ReactDOM.render(
     <React.StrictMode>
@@ -17,6 +18,7 @@ ReactDOM.render(
     </React.StrictMode>,
     document.getElementById('root')
 );
+setup(store);
 
 // If you want to start measuring performance in your app, pass a function
 // to log results (for example: reportWebVitals(console.log))
